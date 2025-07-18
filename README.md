@@ -1,8 +1,3 @@
-Of course, my apologies for the previous output's formatting issues. The artifacts you saw are often introduced by the web interface and were not intended to be part of the final document.
-
-Here is the clean, raw GitHub-Flavored Markdown (.md) file. You can copy and paste this entire block of text directly into a README.md file in your GitHub repository, and it will render correctly with proper headings, code blocks, lists, and links.
-
-Generated markdown
 # Elastic Stack (ELK) Deployment Guide
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen) ![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue) ![Version](https://img.shields.io/badge/version-8.x-orange)
