@@ -1,0 +1,79 @@
+# FILE: docker-compose.prod.yml
+# PURPOSE: For a production-like setup. Security is ENABLED.
+# USAGE: docker-compose -f docker-compose.prod.yml up -d
+# NOTE: You MUST change the passwords below!
+
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.2
+    container_name: elasticsearch-prod
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=true"
+      - "xpack.security.http.ssl.enabled=true"
+      - "xpack.security.transport.ssl.enabled=true"
+      - "ELASTIC_PASSWORD=YourStrongPasswordHere" # CHANGE THIS PASSWORD
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_prod_data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 4g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --cacert /usr/share/elasticsearch/config/certs/ca/ca.crt -u elastic:YourStrongPasswordHere https://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - elk-prod
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.6.2
+    container_name: logstash-prod
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+    volumes:
+      - ./logstash/pipeline/logstash.prod.conf:/usr/share/logstash/pipeline/logstash.conf
+    environment:
+      - 'ELASTIC_USER=elastic'
+      - 'ELASTIC_PASSWORD=YourStrongPasswordHere' # USE THE SAME PASSWORD AS ABOVE
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk-prod
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.6.2
+    container_name: kibana-prod
+    ports:
+      - "5601:5601"
+    environment:
+      - "ELASTICSEARCH_HOSTS=https://elasticsearch:9200"
+      - "ELASTICSEARCH_USERNAME=elastic"
+      - "ELASTICSEARCH_PASSWORD=YourStrongPasswordHere" # USE THE SAME PASSWORD AS ABOVE
+      - "ELASTICSEARCH_SSL_VERIFICATIONMODE=certificate" # Use 'none' for quick tests, but 'certificate' is safer
+      - "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca.crt"
+    volumes:
+      # This volume mount is required to make Kibana trust the self-signed ES cert
+      - es_prod_data:/usr/share/kibana/config/certs
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk-prod
+
+volumes:
+  es_prod_data:
+    driver: local
+
+networks:
+  elk-prod:
+    driver: bridge
